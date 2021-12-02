@@ -21,3 +21,4 @@ tmp
 .vscode
 *.heapsnapshot
 node.log
+.nyc_output/
