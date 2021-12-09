@@ -103,10 +103,10 @@ async function decryptToken(token) {
       }
     };
     const response = await config.requestPromise(rpOptions);
-
     if (config.FTN === true) {
       const idToken = await decryptToken(response.id_token);
       const idTokenInfo = await verifyTokenSignature(idToken);
+      response.nonce = idTokenInfo.nonce;
     }
 
     return response;
