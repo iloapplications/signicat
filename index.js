@@ -26,7 +26,8 @@ async function decryptToken(token) {
       throw new Error(`Unable to fetch JWK public keys from ${apiUrl + 'jwks.json'}`);
     }
 
-    const pubKey = jwks.keys.find(elem => elem.use === use);
+    const pubKey = jwks.keys.find(elem => elem.use === use && !elem.kid.includes('any.oidc-signature'));
+
     if (!pubKey || !pubKey.kid || pubKey.kty !== 'RSA') {
       throw new Error(`Invalid JWK ${use} public key from ${apiUrl + 'jwks.json'}`);
     }
