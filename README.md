@@ -64,8 +64,6 @@ const firstName = userInfo['ftn.firstNames'] || userInfo['given_name'] || userIn
 const familyName = userInfo['ftn.familyBirthName'] || userInfo['family_name'];
 const fullName = userInfo['name'];
 const dob = userInfo['birthdate'];
-
-const userInfo = { ssn, firstName, familyName, dob, ssn };
 ```
 
 
