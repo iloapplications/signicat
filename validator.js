@@ -9,8 +9,8 @@ const urlOptions = {
 };
 
 function validateConfig(params) {
-  if (!params.requestPromise || !params.client_id || !params.secret) {
-    throw new Error('Configuration: requestPromise, client_id and secret are mandatory');
+  if (!params.client_id || !params.secret) {
+    throw new Error('Configuration: client_id and secret are mandatory');
   }
   if(params.FTN && !params.privateJwk) {
     throw new Error('Configuration: privateJwk is required when FTN is enabled');

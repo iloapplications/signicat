@@ -1,9 +1,14 @@
 'use strict';
 
+const jose = require('node-jose');
+const axios = require('axios');
+const qs = require('qs');
+
+const inputDataValidator = require('./validator.js');
+
 const stagUrl = 'https://preprod.signicat.com/oidc/';
 const prodUrl = 'https://id.signicat.com/oidc/';
-const inputDataValidator = require('./validator.js');
-const jose = require('node-jose');
+const httpOptions = { timeout: 10000 };
 
 module.exports = function Signicat(config) {
   inputDataValidator.validateConfig(config);
@@ -15,13 +20,9 @@ async function decryptToken(token) {
     return result.payload.toString();
   }
 
-  async function getPublicKey(use) {
-    const rpOptions = {
-      method: 'GET',
-      json: true,
-      uri: apiUrl + 'jwks.json',
-    };
-    const jwks = await config.requestPromise(rpOptions);
+  async function getPublicKey(use) {    
+    const { data: jwks } = await axios.get(apiUrl + 'jwks.json', httpOptions);
+
     if (!jwks) {
       throw new Error(`Unable to fetch JWK public keys from ${apiUrl + 'jwks.json'}`);
     }
@@ -40,17 +41,7 @@ async function decryptToken(token) {
     const verified = await jose.JWS.createVerify(sigKey).verify(token);
     return JSON.parse(verified.payload.toString());
   }
-  /*
-    GET /authorize?
-      respose_type=code
-      &scope=openid profile email
-      &client_id=config.clientId
-      &state=af=ifjsldkj
-      &redirect_uri=https://server.example.com:443/oidcclient/redirect/client01
-      &acr_values=urn:signicat:oidc:method:scid-proof
-      &login_hint=deviceId-92855960
-      &login_hint=authType-email
-  */
+
   async function getAuthorizationUrl(params) {
     inputDataValidator.validateGetAuthorize(params);
     let authorizationUrl = new URL(apiUrl + 'authorize');
@@ -93,16 +84,12 @@ async function decryptToken(token) {
       grant_type: params.grant_type,
       code: params.code // Code from getAuthorize
     };
-    const rpOptions = {
-      method: 'POST',
-      json: true,
-      uri: apiUrl + 'token',
-      form: body,
-      headers: {
-        'Authorization': 'Basic ' + base64data
-      }
-    };
-    const response = await config.requestPromise(rpOptions);
+
+    const stringifiedBody = qs.stringify(body);
+
+    let options = { ... httpOptions, headers: { Authorization: 'Basic ' + base64data }};
+    const { data: response } = await axios.post(apiUrl + 'token', stringifiedBody, options);
+
     if (config.FTN === true) {
       const idToken = await decryptToken(response.id_token);
       const idTokenInfo = await verifyTokenSignature(idToken);
@@ -118,29 +105,19 @@ async function decryptToken(token) {
   async function getUserInfo(params) {
     inputDataValidator.validateGetUserInfo(params);
     const bearer = params.access_token;
-    const rpOptions = {
-      method: 'GET',
-      json: true,
-      uri: apiUrl + 'userinfo',
-      headers: {
-        'Authorization': 'Bearer ' + bearer
-      }
+ 
+    let options = { 
+      ... httpOptions,  
+      headers: { Authorization: 'Bearer ' + bearer }
     };
+    
+    const { data: response } = await axios.get(apiUrl + 'userinfo', options);
 
-    const response = await config.requestPromise(rpOptions);
     let userInfo = response;
     if (config.FTN === true) {
       const userInfoToken = await decryptToken(response);
       userInfo = await verifyTokenSignature(userInfoToken);
     }
-
-    // Extract SSN (social security number)
-    userInfo.ssn = userInfo['signicat.national_id'] ||
-      userInfo['signicat.national-id'] ||
-      userInfo['tupas.customer.id'] ||
-      userInfo['tupas.customer.id.plaintext'] ||
-      userInfo['national-id.fi.hetu'] ||
-      userInfo['national-identity'];
 
     return userInfo;
   }
