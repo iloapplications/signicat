@@ -29,7 +29,6 @@ const signicatConfig = {
   client_id: 'YOUR SIGNICAT CLIENT ID',
   secret: 'YOUR SIGNICAT SECRET',
   isProd: process.env.NODE_ENV === 'production',
-  requestPromise: require('request-promise'),
   privateJwk: 'YOUR SIGNICAT PRIVATE JWK',
   FTN: true
 };
@@ -59,7 +58,7 @@ const accessToken = await new Signicat(signicatConfig).postAccessToken(signicatP
 const signicatParams = { access_token };
 
 const userInfo = await new Signicat(signicatConfig).getUserInfo(signicatParams);
-const ssn = userInfo['signicat.national_id'] || userInfo['ssn'];
+const ssn = userInfo['signicat.national_id'];
 const firstName = userInfo['ftn.firstNames'] || userInfo['given_name'] || userInfo['ftn.firstBirthName'];
 const familyName = userInfo['ftn.familyBirthName'] || userInfo['family_name'];
 const fullName = userInfo['name'];
