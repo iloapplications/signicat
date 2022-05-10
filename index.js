@@ -44,9 +44,16 @@ module.exports = function Signicat(config) {
     console.log('Signicat/verifyTokenSignature()');
 
     const pubKey = await getPublicKey('sig');
-    const sigKey = await jose.JWK.asKey(pubKey);
-    const verified = await jose.JWS.createVerify(sigKey).verify(token);
-    return JSON.parse(verified.payload.toString());
+    try {
+      const sigKey = await jose.JWK.asKey(pubKey);
+      console.log('Signicat/verifyTokenSignature() sigKey:', sigKey);
+      const verified = await jose.JWS.createVerify(sigKey).verify(token);
+      console.log('Signicat/verifyTokenSignature() verified:', verified);
+      return JSON.parse(verified.payload.toString());
+    } catch (err) {
+      console.error('Signicat/verifyTokenSignature() ERROR! Cannot verify signature; err:', err);
+      throw err;
+    }
   }
 
   async function getAuthorizationUrl(params) {
