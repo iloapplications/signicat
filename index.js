@@ -11,16 +11,21 @@ const prodUrl = 'https://id.signicat.com/oidc/';
 const httpOptions = { timeout: 10000 };
 
 module.exports = function Signicat(config) {
+  console.log('Signicat config:', config);
   inputDataValidator.validateConfig(config);
   const apiUrl = config.isProd ? prodUrl : stagUrl;
 
-async function decryptToken(token) {
+  async function decryptToken(token) {
+    console.log('Signicat/decryptToken() token:', token);
+
     const privateJwk = await jose.JWK.asKey(config.privateJwk);
     const result = await jose.JWE.createDecrypt(privateJwk).decrypt(token);
     return result.payload.toString();
   }
 
-  async function getPublicKey(use) {    
+  async function getPublicKey(use) {
+    console.log('Signicat/getPublicKey() use:', use);
+
     const { data: jwks } = await axios.get(apiUrl + 'jwks.json', httpOptions);
 
     if (!jwks) {
@@ -36,6 +41,8 @@ async function decryptToken(token) {
   }
 
   async function verifyTokenSignature(token) {
+    console.log('Signicat/verifyTokenSignature()');
+
     const pubKey = await getPublicKey('sig');
     const sigKey = await jose.JWK.asKey(pubKey);
     const verified = await jose.JWS.createVerify(sigKey).verify(token);
@@ -43,8 +50,10 @@ async function decryptToken(token) {
   }
 
   async function getAuthorizationUrl(params) {
+    console.log('Signicat/getAuthorizationUrl()');
+
     inputDataValidator.validateGetAuthorize(params);
-    let authorizationUrl = new URL(apiUrl + 'authorize');
+    const authorizationUrl = new URL(apiUrl + 'authorize');
 
     if (config.FTN === true) {
       const jwk = await getPublicKey('enc');
@@ -70,11 +79,14 @@ async function decryptToken(token) {
       }
     }
 
+    console.log('Signicat/getAuthorizationUrl() authorizationUrl:', authorizationUrl);
     return authorizationUrl.href;
   }
 
   async function postAccessToken(params) {
+    console.log('Signicat/postAccessToken() params:', params);
     inputDataValidator.validatePostToken(params);
+
     const data = config.client_id + ':' + config.secret;
     const buff = new Buffer.from(data);
     const base64data = buff.toString('base64');
@@ -84,18 +96,21 @@ async function decryptToken(token) {
       grant_type: params.grant_type,
       code: params.code // Code from getAuthorize
     };
+    console.log('Signicat/postAccessToken() body:', body);
 
     const stringifiedBody = qs.stringify(body);
 
-    let options = { ... httpOptions, headers: { Authorization: 'Basic ' + base64data }};
+    const options = { ...httpOptions, headers: { Authorization: 'Basic ' + base64data }};
     const { data: response } = await axios.post(apiUrl + 'token', stringifiedBody, options);
 
     if (config.FTN === true) {
       const idToken = await decryptToken(response.id_token);
       const idTokenInfo = await verifyTokenSignature(idToken);
       response.nonce = idTokenInfo.nonce;
+      console.log('Signicat/postAccessToken() FTN true; add nonce to response; nonce:',idTokenInfo.nonce);
     }
 
+    console.log('Signicat/postAccessToken() response:', response);
     return response;
   }
 
@@ -105,12 +120,12 @@ async function decryptToken(token) {
   async function getUserInfo(params) {
     inputDataValidator.validateGetUserInfo(params);
     const bearer = params.access_token;
- 
-    let options = { 
-      ... httpOptions,  
+
+    let options = {
+      ... httpOptions,
       headers: { Authorization: 'Bearer ' + bearer }
     };
-    
+
     const { data: response } = await axios.get(apiUrl + 'userinfo', options);
 
     let userInfo = response;
