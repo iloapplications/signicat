@@ -30,7 +30,9 @@ const signicatConfig = {
   secret: 'YOUR SIGNICAT SECRET',
   isProd: process.env.NODE_ENV === 'production',
   privateJwk: 'YOUR SIGNICAT PRIVATE JWK',
-  FTN: true
+  FTN: true,
+  publicSigIdentifier: 'signature key identifier, used for key rotation, e.g. 2022',
+  publicEncIdentifier: 'enxryption key identifier, usually generic, e.g. encryption'
 };
 
 // get authorization url

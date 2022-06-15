@@ -11,7 +11,7 @@ const prodUrl = 'https://id.signicat.com/oidc/';
 const httpOptions = { timeout: 10000 };
 
 module.exports = function Signicat(config) {
-  console.log('Signicat config:', config);
+  console.log('Signicat.config:', config);
   inputDataValidator.validateConfig(config);
   const apiUrl = config.isProd ? prodUrl : stagUrl;
 
@@ -23,16 +23,20 @@ module.exports = function Signicat(config) {
     return result.payload.toString();
   }
 
-  async function getPublicKey(use) {
+  async function getPublicKey(use, pubKidIdentifier = '.') {
     console.log('Signicat/getPublicKey() use:', use);
+    console.log('Signicat/getPublicKey() pubKidIdentifier:', pubKidIdentifier);
 
     const { data: jwks } = await axios.get(apiUrl + 'jwks.json', httpOptions);
 
     if (!jwks) {
       throw new Error(`Unable to fetch JWK public keys from ${apiUrl + 'jwks.json'}`);
     }
+    console.log('Signicat/getPublicKey() jwks:', jwks);
 
-    const pubKey = jwks.keys.find(elem => elem.use === use && !elem.kid.includes('any.oidc-signature'));
+    // const pubKey = jwks.keys.find(elem => elem.use === use && !elem.kid.includes('any.oidc-signature'));
+    const pubKey = jwks.keys.find(elem => (elem.use === use) && elem.kid.includes(pubKidIdentifier) && !elem.kid.includes('any.oidc-signature'));
+    console.log('Signicat/getPublicKey() pubKey:', pubKey);
 
     if (!pubKey || !pubKey.kid || pubKey.kty !== 'RSA') {
       throw new Error(`Invalid JWK ${use} public key from ${apiUrl + 'jwks.json'}`);
@@ -43,7 +47,7 @@ module.exports = function Signicat(config) {
   async function verifyTokenSignature(token) {
     console.log('Signicat/verifyTokenSignature()');
 
-    const pubKey = await getPublicKey('sig');
+    const pubKey = await getPublicKey('sig', config.publicSigIdentifier);
     try {
       const sigKey = await jose.JWK.asKey(pubKey);
       console.log('Signicat/verifyTokenSignature() sigKey:', sigKey);
@@ -63,7 +67,7 @@ module.exports = function Signicat(config) {
     const authorizationUrl = new URL(apiUrl + 'authorize');
 
     if (config.FTN === true) {
-      const jwk = await getPublicKey('enc');
+      const jwk = await getPublicKey('enc', config.publicEncIdentifier);
       params.client_id = config.client_id;
       const payloadBuffer = Buffer.from(JSON.stringify(params));
       // Preparing RSA key
