@@ -6,9 +6,12 @@ const qs = require('qs');
 
 const inputDataValidator = require('./validator.js');
 
-const stagUrl = 'https://preprod.signicat.com/oidc/';
-const prodUrl = 'https://id.signicat.com/oidc/';
-const httpOptions = { timeout: 10000 };
+// const stagUrl = 'https://preprod.signicat.com/oidc/';
+// const prodUrl = 'https://id.signicat.com/oidc/';
+const stagUrl = 'https://plusid.sandbox.signicat.com/auth/open/'; // connect/authorize/';
+const prodUrl = 'https://plusid.app.signicat.com/auth/open/';
+
+const httpOptions = { timeout: 15000 };
 
 module.exports = function Signicat(config) {
   console.log('Signicat.config:', config);
@@ -27,10 +30,11 @@ module.exports = function Signicat(config) {
     console.log('Signicat/getPublicKey() use:', use);
     console.log('Signicat/getPublicKey() pubKidIdentifier:', pubKidIdentifier);
 
-    const { data: jwks } = await axios.get(apiUrl + 'jwks.json', httpOptions);
+    const postUrl = '.well-known/openid-configuration/jwks';
+    const { data: jwks } = await axios.get(apiUrl + postUrl, httpOptions);
 
     if (!jwks) {
-      throw new Error(`Unable to fetch JWK public keys from ${apiUrl + 'jwks.json'}`);
+      throw new Error(`Unable to fetch JWK public keys from ${apiUrl + postUrl}`);
     }
     console.log('Signicat/getPublicKey() jwks:', jwks);
 
@@ -39,7 +43,7 @@ module.exports = function Signicat(config) {
     console.log('Signicat/getPublicKey() pubKey:', pubKey);
 
     if (!pubKey || !pubKey.kid || pubKey.kty !== 'RSA') {
-      throw new Error(`Invalid JWK ${use} public key from ${apiUrl + 'jwks.json'}`);
+      throw new Error(`Invalid JWK ${use} public key from ${apiUrl + postUrl}`);
     }
     return pubKey;
   }
@@ -64,7 +68,7 @@ module.exports = function Signicat(config) {
     console.log('Signicat/getAuthorizationUrl()');
 
     inputDataValidator.validateGetAuthorize(params);
-    const authorizationUrl = new URL(apiUrl + 'authorize');
+    const authorizationUrl = new URL(apiUrl + 'connect/authorize');
 
     if (config.FTN === true) {
       const jwk = await getPublicKey('enc', config.publicEncIdentifier);
@@ -112,7 +116,7 @@ module.exports = function Signicat(config) {
     const stringifiedBody = qs.stringify(body);
 
     const options = { ...httpOptions, headers: { Authorization: 'Basic ' + base64data }};
-    const { data: response } = await axios.post(apiUrl + 'token', stringifiedBody, options);
+    const { data: response } = await axios.post(apiUrl + 'connect/token', stringifiedBody, options);
 
     if (config.FTN === true) {
       const idToken = await decryptToken(response.id_token);
@@ -137,7 +141,7 @@ module.exports = function Signicat(config) {
       headers: { Authorization: 'Bearer ' + bearer }
     };
 
-    const { data: response } = await axios.get(apiUrl + 'userinfo', options);
+    const { data: response } = await axios.get(apiUrl + 'connect/userinfo', options);
 
     let userInfo = response;
     if (config.FTN === true) {
