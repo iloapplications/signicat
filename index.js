@@ -119,9 +119,6 @@ module.exports = function Signicat(config) {
     const { data: response } = await axios.post(apiUrl + 'connect/token', stringifiedBody, options);
     console.log('Signicat/postAccessToken() response:', response);
 
-    const decryptedResponse = await decryptToken(response);
-    console.log('Signicat/postAccessToken() DEBUG/decryptedResponse:', decryptedResponse);
-
     let idToken = response.id_token;
     if (config.FTN === true) {
       idToken = await decryptToken(idToken);
