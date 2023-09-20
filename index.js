@@ -70,7 +70,7 @@ module.exports = function Signicat(config) {
     inputDataValidator.validateGetAuthorize(params);
     const authorizationUrl = new URL(apiUrl + 'connect/authorize');
 
-    if (config.FTN === true) {
+    if (config.useJwe === true) {
       const jwk = await getPublicKey('enc', config.publicEncIdentifier);
       params.client_id = config.client_id;
       const payloadBuffer = Buffer.from(JSON.stringify(params));
