@@ -1,6 +1,6 @@
 {
   "name": "signicat",
-  "version": "0.9.6",
+  "version": "0.10.0",
   "description": "Signicat integration with authentication by ILOapps.es",
   "main": "index.js",
   "scripts": {
