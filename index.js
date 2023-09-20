@@ -117,12 +117,21 @@ module.exports = function Signicat(config) {
 
     const options = { ...httpOptions, headers: { Authorization: 'Basic ' + base64data }};
     const { data: response } = await axios.post(apiUrl + 'connect/token', stringifiedBody, options);
+    console.log('Signicat/postAccessToken() response:', response);
 
+    const decryptedResponse = await decryptToken(response);
+    console.log('Signicat/postAccessToken() DEBUG/decryptedResponse:', decryptedResponse);
+
+    let idToken = response.id_token;
     if (config.FTN === true) {
-      const idToken = await decryptToken(response.id_token);
-      const idTokenInfo = await verifyTokenSignature(idToken);
-      response.nonce = idTokenInfo.nonce;
-      console.log('Signicat/postAccessToken() FTN true; add nonce to response; nonce:',idTokenInfo.nonce);
+      idToken = await decryptToken(idToken);
+      console.log('Signicat/postAccessToken() FTN/idToken:', idToken);
+    }
+    if (config.useSig === true) {
+      idToken = await verifyTokenSignature(idToken);
+      response.nonce = idToken.nonce;
+      console.log('Signicat/postAccessToken() useSig/idToken:', idToken);
+      console.log('Signicat/postAccessToken() FTN true; add nonce to response; nonce:', idToken.nonce);
     }
 
     console.log('Signicat/postAccessToken() response:', response);
@@ -133,20 +142,28 @@ module.exports = function Signicat(config) {
     curl -XGET "https://preprod.signicat.com/oidc/userinfo" -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
   */
   async function getUserInfo(params) {
+    console.log('Signicat/getUserInfo() params:', params);
+
     inputDataValidator.validateGetUserInfo(params);
     const bearer = params.access_token;
 
-    let options = {
-      ... httpOptions,
+    const options = {
+      ...httpOptions,
       headers: { Authorization: 'Bearer ' + bearer }
     };
 
     const { data: response } = await axios.get(apiUrl + 'connect/userinfo', options);
 
     let userInfo = response;
+    console.log('Signicat/getUserInfo() userInfo:', userInfo);
+
     if (config.FTN === true) {
-      const userInfoToken = await decryptToken(response);
-      userInfo = await verifyTokenSignature(userInfoToken);
+      userInfo = await decryptToken(response);
+      console.log('Signicat/getUserInfo() FTN/userInfo:', userInfo);
+    }
+    if (config.useSig === true) {
+      userInfo = await verifyTokenSignature(userInfo);
+      console.log('Signicat/getUserInfo() useSig/userInfo:', userInfo);
     }
 
     return userInfo;
