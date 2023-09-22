@@ -272,58 +272,71 @@ module.exports = function Signicat(config) {
     console.log('Signicat/createSession() options:', options);
 
     // do request
-    const postResponse = await axios.post(SIGNICAT_API_ENDPOINT + 'sessions', body, options);
-    console.log('Signicat/createSession() headers of response:', postResponse.headers);
-    console.log('Signicat/createSession() data of response:', postResponse.data);
+    try {
+      const postResponse = await axios.post(SIGNICAT_API_ENDPOINT + 'sessions', body, options);
+      console.log('Signicat/createSession() headers of response:', postResponse.headers);
+      console.log('Signicat/createSession() data of response:', postResponse.data);
 
-    // decrypt data
-    let decryptedResponse = postResponse.data;
-    if (config.FTN || postResponse.headers['content-type'] === 'application/jose') {
-      // decrypt the response
-      console.log('Signicat/createSession() try to decrypt the payload');
-      decryptedResponse = await decryptToken(decryptedResponse);
-      try {
-        decryptedResponse = JSON.parse(decryptedResponse);
-      } catch (err) {
-        console.error('Signicat/createSession() ERROR in JSON parsing decryptedResponse; returning original! err:', err);;
+      // decrypt data
+      let decryptedResponse = postResponse.data;
+      if (config.FTN || postResponse.headers['content-type'] === 'application/jose') {
+        // decrypt the response
+        console.log('Signicat/createSession() try to decrypt the payload');
+        decryptedResponse = await decryptToken(decryptedResponse);
+        try {
+          decryptedResponse = JSON.parse(decryptedResponse);
+        } catch (err) {
+          console.error('Signicat/createSession() ERROR in JSON parsing decryptedResponse; returning original! err:', err);;
+        }
+        // console.log('Signicat/createSession() decryptedResponse:', decryptedResponse);
       }
-      // console.log('Signicat/createSession() decryptedResponse:', decryptedResponse);
+
+      // include nonce in response
+      decryptedResponse.nonce = params.nonce;
+
+      return decryptedResponse;
+    } catch (err) {
+      console.error('Signicat/createSession() catch in request; err:', err);
+      throw err;
     }
-
-    // include nonce in response
-    decryptedResponse.nonce = params.nonce;
-
-    return decryptedResponse;
   }
 
   async function getSession(params) {
     console.log('Signicat/getSession() params:', params);
     // inputDataValidator.validateGetSession(params);
 
-    const bearer = params.accessToken;
+    // get access token
+    const accessToken = params.accessToken ? params.accessToken : await obtainAccessToken(params);
+    const bearerHeader = 'Bearer ' + accessToken;
     const options = {
       ...httpOptions,
-      headers: { Authorization: 'Bearer ' + bearer }
+      headers: { Authorization: bearerHeader }
     };
 
-    const getResponse = await axios.get(SIGNICAT_API_ENDPOINT + 'sessions/' + params.sessionId, options);
-    console.log('Signicat/getSession() headers of response:', getResponse.headers);
-    console.log('Signicat/getSession() data of response:', getResponse.data);
+    // do request
+    try {
+      const getResponse = await axios.get(SIGNICAT_API_ENDPOINT + 'sessions/' + params.sessionId, options);
+      console.log('Signicat/getSession() headers of response:', getResponse.headers);
+      console.log('Signicat/getSession() data of response:', getResponse.data);
 
-    // decrypt data
-    let decryptedResponse = getResponse.data;
-    if (config.FTN || getResponse.headers['content-type'] === 'application/jose') {
-      // decrypt the response
-      console.log('Signicat/getSession() try to decrypt the payload');
-      decryptedResponse = await decryptToken(decryptedResponse);
-      try {
-        decryptedResponse = JSON.parse(decryptedResponse);
-      } catch (err) {
-        console.error('Signicat/getSession() ERROR in JSON parsing decryptedResponse; returning original! err:', err);;
+      // decrypt data
+      let decryptedResponse = getResponse.data;
+      if (config.FTN || getResponse.headers['content-type'] === 'application/jose') {
+        // decrypt the response
+        console.log('Signicat/getSession() try to decrypt the payload');
+        decryptedResponse = await decryptToken(decryptedResponse);
+        try {
+          decryptedResponse = JSON.parse(decryptedResponse);
+        } catch (err) {
+          console.error('Signicat/getSession() ERROR in JSON parsing decryptedResponse; returning original! err:', err);;
+        }
+        console.log('Signicat/getSession() decryptedResponse:', decryptedResponse);
       }
-      console.log('Signicat/getSession() decryptedResponse:', decryptedResponse);
+      return decryptedResponse;
+    } catch (err) {
+      console.error('Signicat/getSession() catch in request; err:', err);
+      throw err;
     }
-    return decryptedResponse;
   }
 
   return {
