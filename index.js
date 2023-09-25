@@ -291,8 +291,8 @@ module.exports = function Signicat(config) {
 
       return decryptedResponse;
     } catch (err) {
-      console.error('Signicat/createSession() catch in request; err:', err);
-      if (err.response.data) {
+      // console.error('Signicat/createSession() catch in request; err:', err);
+      if (err.response?.data) {
         console.error('Signicat/createSession() err.response.data:', JSON.stringify(err.response.data, null, 2));
       }
       throw err;
@@ -332,8 +332,8 @@ module.exports = function Signicat(config) {
       }
       return decryptedResponse;
     } catch (err) {
-      console.error('Signicat/getSession() catch in request; err:', err);
-      if (err.response.data) {
+      // console.error('Signicat/getSession() catch in request; err:', err);
+      if (err.response?.data) {
         console.error('Signicat/createSession() err.response.data:', JSON.stringify(err.response.data, null, 2));
       }
       throw err;
